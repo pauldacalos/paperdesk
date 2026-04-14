@@ -1,0 +1,36 @@
+// PaperDesk — Firebase Storage Rules
+//
+// Current policy:
+//   - Anyone can WRITE to submissions/ (no auth required — open submission system)
+//   - No one can READ via direct URL without a signed/download URL
+//     (the SDK getDownloadURL() call still works — this blocks raw GCS access)
+//
+// FUTURE: When you add Firebase Auth, tighten write rules:
+//   allow write: if request.auth != null;
+//
+// FUTURE: When you add admin dashboard, allow admin reads:
+//   allow read: if request.auth.token.admin == true;
+
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Submissions folder — open write for paper uploads
+    match /submissions/{submissionNum}/{fileName} {
+
+      // Anyone can upload — required for anonymous paper submission
+      // Validations: max 50 MB, only PDF/DOC/DOCX
+      allow write: if request.resource.size <= 52428800   // 50 MB in bytes
+                   && request.resource.contentType.matches('application/(pdf|msword|vnd.openxmlformats-officedocument.wordprocessingml.document)');
+
+      // Block direct public reads — download URLs from getDownloadURL() still work
+      // FUTURE: allow read: if request.auth != null && request.auth.token.admin == true;
+      allow read: if false;
+    }
+
+    // Deny everything else by default
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
